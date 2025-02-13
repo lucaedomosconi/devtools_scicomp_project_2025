@@ -1,4 +1,4 @@
-# Choosing a build backend:
+I# Choosing a build backend:
 requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "pyclassify"
 version = "0.0.1"
-description = "my project"
+description = "my_project_devtools"
 readme = "README.md"
 requires-python = ">=3.9"
 license = { file = "LICENSE" }
