@@ -11,6 +11,10 @@ fi
 echo "Extracting $ZIP_FILE..."
 unzip $ZIP_FILE
 if [ -f "ionosphere.data" ]; then
+   if [ -f "${DEST_DIR}/ionosphere.data" ] ; then
+      echo "Removing previous ionosphere.data file"
+      rm $DEST_DIR/ionosphere.data
+   fi
    echo "Moving ionosphere.data to $DEST_DIR"
    mv ionosphere.data $DEST_DIR/
 else

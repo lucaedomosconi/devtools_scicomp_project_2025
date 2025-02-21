@@ -1,0 +1,90 @@
+Timer unit: 1e-06 s
+
+Total time: 9.26598 s
+File: /home/lucam/devtools_scicomp_project_2025/src/pyclassify/classifier.py
+Function: _get_k_nearest_neighbours at line 15
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+    15                                               @profile
+    16                                               def _get_k_nearest_neighbours(self,X,y,x) :
+    17      3681        397.2      0.1      0.0          distances = []
+    18   3390201     289126.3      0.1      3.1          for i in range(len(X)) :
+    19   3386520    8109281.4      2.4     87.5              distances.append(self.distance(X[i],x))
+    20      3681      79737.7     21.7      0.9          d_y = list(zip(distances,y))
+    21      3681     663210.6    180.2      7.2          d_y.sort()
+    22      3681     122421.5     33.3      1.3          y_sorted = [item[1] for item in d_y]
+    23      3681       1804.0      0.5      0.0          return y_sorted[:self.k]
+
+Total time: 10.0823 s
+File: /home/lucam/devtools_scicomp_project_2025/src/pyclassify/classifier.py
+Function: __call__ at line 25
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+    25                                               @profile
+    26                                               def __call__(self, data, new_points):
+    27         1          0.8      0.8      0.0          X, y = data
+    28         1          0.3      0.3      0.0          retval = []
+    29         1          0.8      0.8      0.0          if self.backend == "plain" :
+    30                                                       print("Using plain")
+    31                                                       self.distance = utils.distance
+    32         1          0.2      0.2      0.0          elif self.backend == "numpy" :
+    33         1         39.9     39.9      0.0              print("Using numpy")
+    34         1          1.4      1.4      0.0              self.distance = utils.distance_numpy
+    35         1       6992.3   6992.3      0.1              X, y, new_points = np.array(X),  np.array(y), np.array(new_points)
+    36                                                   elif self.backend == "numba" :
+    37                                                       print("Using numba")
+    38                                                       self.distance = utils_compiled.distance_numba
+    39                                                       X, y, new_points = np.array(X,dtype=np.float64),  np.array(y), np.array(new_points, np.dtype(np.float64))
+    40      3682       1451.0      0.4      0.0          for new_point in new_points :
+    41      3681   10041818.6   2728.0     99.6              neighbours_labels = self._get_k_nearest_neighbours(X,y,new_point)
+    42      3681      32028.7      8.7      0.3              retval.append(utils.majority_vote(neighbours_labels))
+    43         1          0.1      0.1      0.0          return retval
+
+Total time: 0 s
+File: /home/lucam/devtools_scicomp_project_2025/src/pyclassify/utils.py
+Function: distance at line 20
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+    20                                           @profile
+    21                                           def distance(point1, point2) :
+    22                                               retval = 0.0
+    23                                               for i in range(len(point1)) :
+    24                                                   retval += (point1[i] - point2[i]) * (point1[i] - point2[i])
+    25                                               return retval
+
+Total time: 3.83385 s
+File: /home/lucam/devtools_scicomp_project_2025/src/pyclassify/utils.py
+Function: distance_numpy at line 27
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+    27                                           @profile
+    28                                           def distance_numpy(point1_np,point2_np) :
+    29   3386520    1152049.4      0.3     30.0      point2_1_np = point2_np - point1_np
+    30   3386520    2681805.0      0.8     70.0      return np.dot(point2_1_np,point2_1_np)
+
+Total time: 0.0158395 s
+File: /home/lucam/devtools_scicomp_project_2025/src/pyclassify/utils.py
+Function: majority_vote at line 32
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+    32                                           @profile
+    33                                           def majority_vote(neighbours) :
+    34      3681        482.0      0.1      3.0      vote_count = {}
+    35     22086       2252.4      0.1     14.2      for vote in neighbours :
+    36     18405       3096.9      0.2     19.6          if vote in vote_count :
+    37     12347       2954.6      0.2     18.7              vote_count[vote] += 1
+    38                                                   else :
+    39      6058       1227.9      0.2      7.8              vote_count[vote] = 1
+    40      3681        385.3      0.1      2.4      majority = None
+    41      3681        382.7      0.1      2.4      majority_count = 0
+    42      9739       2880.8      0.3     18.2      for vote, count in vote_count.items() :
+    43      6058        871.6      0.1      5.5          if count > majority_count :
+    44      4425        473.5      0.1      3.0              majority_count = count
+    45      4425        466.7      0.1      2.9              majority = vote
+    46      3681        365.1      0.1      2.3      return majority
+
