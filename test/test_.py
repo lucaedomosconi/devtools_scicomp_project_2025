@@ -30,10 +30,23 @@ def test_majority_vote() :
     assert utils.majority_vote(dataset3) == 'b'
 
 def test_constructor() :
-    classifier_0 = classifier.kNN(4)
+    classifier_0 = classifier.kNN(4, "numpy")
+    assert isinstance(classifier_0, classifier.kNN)
+    assert classifier_0.k == 4
+    assert classifier_0.backend == "numpy"
+    classifier_0 = classifier.kNN(4, "numba")
+    assert isinstance(classifier_0, classifier.kNN)
+    assert classifier_0.k == 4
+    assert classifier_0.backend == "numba"
+    classifier_0 = classifier.kNN(4, "plain")
+    assert isinstance(classifier_0, classifier.kNN)
+    assert classifier_0.k == 4
+    assert classifier_0.backend == "plain"
+    with pytest.raises(ValueError) :
+        classifier_0 = classifier.kNN(4, "nonimplemented")
     with pytest.raises(TypeError) :
-        classifier_1 = classifier.kNN("1")
+        classifier_1 = classifier.kNN("1", "plain")
     with pytest.raises(TypeError) :
-        classifier_2 = classifier.kNN([1,2])
+        classifier_2 = classifier.kNN([1,2], "plain")
     with pytest.raises(TypeError) :
-        classifier_3 = classifier.kNN(2.4)
+        classifier_3 = classifier.kNN(2.4, "plain")

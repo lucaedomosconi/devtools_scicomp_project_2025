@@ -1,0 +1,163 @@
+Timer unit: 1e-06 s
+
+Total time: 8.94924 s
+File: /home/lucam/devtools_scicomp_project_2025/src/pyclassify/classifier.py
+Function: _get_k_nearest_neighbours at line 15
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+    15                                               @profile
+    16                                               def _get_k_nearest_neighbours(self,X,y,x) :
+    17                                                   """
+    18                                                   Find the k-nearest neighbours of a given point x.
+    19                                           
+    20                                                   Parameters:
+    21                                                   -----------
+    22                                                   X : list of lists of floats or a 2D NumPy array.
+    23                                                       The training data points.
+    24                                                   y : list of strings or a 1D NumPy array.
+    25                                                       The labels corresponding to the training data points.
+    26                                                   x : list of floats or a 1D NumPy array.
+    27                                                       The data point for which to find the k-nearest neighbours.
+    28                                           
+    29                                                   Returns:
+    30                                                   --------
+    31                                                   list
+    32                                                       A list of the labels of the k-nearest neighbours.
+    33                                                   """
+    34      3681    8006222.4   2175.0     89.5          distances = [self.distance(X[i],x) for i in range(len(X))]
+    35      3681     943015.9    256.2     10.5          return [item[1] for item in sorted(list(zip(distances,y)))][:self.k]
+
+Total time: 9.0107 s
+File: /home/lucam/devtools_scicomp_project_2025/src/pyclassify/classifier.py
+Function: __call__ at line 37
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+    37                                               @profile
+    38                                               def __call__(self, data : tuple[list[list[float]],list], new_points : list[list[float]]) -> list :
+    39                                                   """
+    40                                                   Classify new data points based on the provided training data.
+    41                                           
+    42                                                   Parameters:
+    43                                                   -----------
+    44                                                   data : tuple[list[list[float]], list]
+    45                                                       A tuple containing the training data. The first element is a list of feature vectors (X),
+    46                                                       and the second element is a list of corresponding labels (y).
+    47                                                   new_points : list[list[float]]
+    48                                                       A list of new data points to classify.
+    49                                           
+    50                                                   Returns:
+    51                                                   --------
+    52                                                   list
+    53                                                       A list of predicted labels for each new data point.
+    54                                           
+    55                                                   Notes:
+    56                                                   ------
+    57                                                   The method uses different backends ("plain", "numpy", "numba") to compute distances
+    58                                                   between points. The backend is determined by the `self.backend` attribute.
+    59                                                   """
+    60         1          0.7      0.7      0.0          X, y = data
+    61         1          0.3      0.3      0.0          retval = []
+    62         1          0.5      0.5      0.0          if self.backend == "plain" :
+    63                                                       print("Using plain")
+    64                                                       self.distance = utils.distance
+    65         1          0.4      0.4      0.0          elif self.backend == "numpy" :
+    66         1         39.7     39.7      0.0              print("Using numpy")
+    67         1          1.2      1.2      0.0              self.distance = utils.distance_numpy
+    68         1       6903.0   6903.0      0.1              X, y, new_points = np.array(X),  np.array(y), np.array(new_points)
+    69                                                   elif self.backend == "numba" :
+    70                                                       print("Using numba")
+    71                                                       self.distance = utils_compiled.distance_numba
+    72                                                       X, y, new_points = np.array(X,dtype=np.float64),  np.array(y), np.array(new_points, np.dtype(np.float64))
+    73      3682       1557.6      0.4      0.0          for new_point in new_points :
+    74      3681    8968600.4   2436.5     99.5              neighbours_labels = self._get_k_nearest_neighbours(X,y,new_point)
+    75      3681      33599.8      9.1      0.4              retval.append(utils.majority_vote(neighbours_labels))
+    76         1          0.1      0.1      0.0          return retval
+
+Total time: 0 s
+File: /home/lucam/devtools_scicomp_project_2025/src/pyclassify/utils.py
+Function: distance at line 22
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+    22                                           @profile
+    23                                           def distance(point1, point2) :
+    24                                               """
+    25                                               Calculate the squared Euclidean distance between two points.
+    26                                           
+    27                                               Parameters:
+    28                                               point1 (list or tuple of floats): The first point in n-dimensional space.
+    29                                               point2 (list or tuple of floats): The second point in n-dimensional space.
+    30                                           
+    31                                               Returns:
+    32                                               float: The squared Euclidean distance between point1 and point2.
+    33                                           
+    34                                               Example:
+    35                                               >>> distance([1, 2], [4, 6])
+    36                                               25.0
+    37                                               """
+    38                                               retval = 0.0
+    39                                               for i in range(len(point1)) :
+    40                                                   retval += (point1[i] - point2[i]) * (point1[i] - point2[i])
+    41                                               return retval
+
+Total time: 3.92997 s
+File: /home/lucam/devtools_scicomp_project_2025/src/pyclassify/utils.py
+Function: distance_numpy at line 43
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+    43                                           @profile
+    44                                           def distance_numpy(point1_np : np.ndarray, point2_np : np.ndarray) -> float :
+    45                                               """
+    46                                               Calculate the squared Euclidean distance between two points using NumPy.
+    47                                           
+    48                                               Parameters:
+    49                                               point1_np (np.ndarray): The first point in n-dimensional space.
+    50                                               point2_np (np.ndarray): The second point in n-dimensional space.
+    51                                           
+    52                                               Returns:
+    53                                               float: The squared Euclidean distance between point1_np and point2_np.
+    54                                           
+    55                                               Example:
+    56                                               >>> import numpy as np
+    57                                               >>> point1 = np.array([1.0, 2.0])
+    58                                               >>> point2 = np.array([4.0, 6.0])
+    59                                               >>> distance_numpy(point1, point2)
+    60                                               25.0
+    61                                               """
+    62   3386520    1196997.3      0.4     30.5      point2_1_np = point2_np - point1_np
+    63   3386520    2732976.2      0.8     69.5      return np.dot(point2_1_np, point2_1_np)
+
+Total time: 0.0169281 s
+File: /home/lucam/devtools_scicomp_project_2025/src/pyclassify/utils.py
+Function: majority_vote at line 65
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+    65                                           @profile
+    66                                           def majority_vote(neighbours : list) -> int :
+    67                                               """
+    68                                               Determines the majority vote from a list of neighbours.
+    69                                           
+    70                                               Args:
+    71                                                   neighbours (list): A list of votes (elements) to count.
+    72                                           
+    73                                               Returns:
+    74                                                   The element with the highest vote count. If there is a tie, 
+    75                                                   the first element with the highest count encountered in the list is returned.
+    76                                               """
+    77      3681        593.6      0.2      3.5      vote_count = {}
+    78     22086       2376.2      0.1     14.0      for vote in neighbours :
+    79     18405       3301.3      0.2     19.5          if vote in vote_count :
+    80     12249       3259.1      0.3     19.3              vote_count[vote] += 1
+    81                                                   else :
+    82      6156       1281.4      0.2      7.6              vote_count[vote] = 1
+    83      3681        425.4      0.1      2.5      majority = None
+    84      3681        369.3      0.1      2.2      majority_count = 0
+    85      9837       3156.8      0.3     18.6      for vote, count in vote_count.items() :
+    86      6156        898.0      0.1      5.3          if count > majority_count :
+    87      4399        434.8      0.1      2.6              majority_count = count
+    88      4399        444.5      0.1      2.6              majority = vote
+    89      3681        387.5      0.1      2.3      return majority

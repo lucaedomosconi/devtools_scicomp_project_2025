@@ -172,5 +172,5 @@ cython_debug/
 
 
 # removal of data files
-.dat
-.data
+*.dat
+*.data
