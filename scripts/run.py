@@ -1,6 +1,7 @@
 import argparse
 import pyclassify.utils as utils
 import pyclassify.classifier as classifier
+from line_profiler import profile
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--config', type=str, required=True)
@@ -9,10 +10,11 @@ args = parser.parse_args()
 filename = args.config
 kwargs = utils.read_config(filename)
 features, labels = utils.read_file(kwargs["dataset"])
+backend = kwargs["backend"]
 N_sample = len(labels)
 N_split = int(N_sample * 0.2)
 k = kwargs['k']
-kNN_class = classifier.kNN(k)
+kNN_class = classifier.kNN(k, backend)
 
 training_set = features[:N_split], labels[:N_split]
 predicted_test = kNN_class(training_set, features[N_split:])

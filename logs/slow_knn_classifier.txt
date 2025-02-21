@@ -1,0 +1,65 @@
+Total time: 0.301633 s
+File: /home/lucam/devtools_scicomp_project_2025/src/pyclassify/classifier.py
+Function: _get_k_nearest_neighbours at line 7
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+     7                                               @profile
+     8                                               def _get_k_nearest_neighbours(self,X,y,x) :
+     9       281         28.3      0.1      0.0          distances = []
+    10     19951       1718.1      0.1      0.6          for i in range(len(X)) :
+    11     19670     297003.4     15.1     98.5              distances.append(utils.distance(X[i],x))
+    12       281        489.9      1.7      0.2          d_y = list(zip(distances,y))
+    13       281       1316.9      4.7      0.4          d_y.sort()
+    14       281        989.4      3.5      0.3          y_sorted = [item[1] for item in d_y]
+    15       281         86.9      0.3      0.0          return y_sorted[:self.k]
+
+Total time: 0.308134 s
+File: /home/lucam/devtools_scicomp_project_2025/src/pyclassify/classifier.py
+Function: __call__ at line 16
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+    16                                               @profile
+    17                                               def __call__(self, data, new_points):
+    18         1          0.5      0.5      0.0          X, y = data
+    19         1          0.3      0.3      0.0          retval = []
+    20       282         31.4      0.1      0.0          for new_point in new_points :
+    21       281     306090.5   1089.3     99.3              neighbours_labels = self._get_k_nearest_neighbours(X,y,new_point)
+    22       281       2011.1      7.2      0.7              retval.append(utils.majority_vote(neighbours_labels))
+    23         1          0.1      0.1      0.0          return retval
+
+Total time: 0.147265 s
+File: /home/lucam/devtools_scicomp_project_2025/src/pyclassify/utils.py
+Function: distance at line 4
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+     4                                           @profile
+     5                                           def distance(point1, point2) :
+     6     19670       1315.9      0.1      0.9      retval = 0.0
+     7    688450      49464.6      0.1     33.6      for i in range(len(point1)) :
+     8    668780      95129.0      0.1     64.6          retval += (point1[i] - point2[i]) * (point1[i] - point2[i])
+     9     19670       1355.1      0.1      0.9      return retval
+
+Total time: 0.000905232 s
+File: /home/lucam/devtools_scicomp_project_2025/src/pyclassify/utils.py
+Function: majority_vote at line 11
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+    11                                           @profile
+    12                                           def majority_vote(neighbours) :
+    13       281         28.3      0.1      3.1      vote_count = {}
+    14      1686        158.8      0.1     17.5      for vote in neighbours :
+    15      1405        152.8      0.1     16.9          if vote in vote_count :
+    16       987        140.5      0.1     15.5              vote_count[vote] += 1
+    17                                                   else :
+    18       418         62.8      0.2      6.9              vote_count[vote] = 1
+    19       281         29.0      0.1      3.2      majority = None
+    20       281         27.5      0.1      3.0      majority_count = 0
+    21       699        157.0      0.2     17.3      for vote, count in vote_count.items() :
+    22       418         64.9      0.2      7.2          if count > majority_count :
+    23       318         28.2      0.1      3.1              majority_count = count
+    24       318         30.0      0.1      3.3              majority = vote
+    25       281         25.4      0.1      2.8      return majority

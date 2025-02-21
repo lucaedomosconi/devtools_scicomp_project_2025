@@ -1,12 +1,20 @@
 import os
 import yaml
+import numpy as np
 
+@profile
 def distance(point1, point2) :
     retval = 0.0
     for i in range(len(point1)) :
         retval += (point1[i] - point2[i]) * (point1[i] - point2[i])
     return retval
 
+@profile
+def distance_numpy(point1_np,point2_np) :
+    point2_1_np = point2_np - point1_np
+    return np.dot(point2_1_np,point2_1_np)
+
+@profile
 def majority_vote(neighbours) :
     vote_count = {}
     for vote in neighbours :
