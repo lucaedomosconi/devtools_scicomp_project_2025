@@ -4,3 +4,7 @@ packaging==24.2
 pluggy==1.5.0
 pytest==8.3.4
 tomli==2.2.1
+lightning==2.5.0.post0
+tensorboard==2.19.0
+torchvision==0.21.0
+jsonargparse[signatures]>=4.27.7
