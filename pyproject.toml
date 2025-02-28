@@ -4,9 +4,9 @@ build-backend = "setuptools.build_meta"
 
 
 [project]
-name = "pyclassify"
+name = "MatrixMult"
 version = "0.0.1"
-description = "my project"
+description = "multiply two matrices in parallel with MPI"
 readme = "README.md"
 requires-python = ">=3.9"
 license = { file = "LICENSE" }
