@@ -1,6 +1,7 @@
 import numpy as np
 import numba
 from mpi4py import MPI
+from . import matmult_pbcc
 from memory_profiler import profile
 # import cProfile
 
@@ -21,10 +22,11 @@ def sub_matrixMultiply(A, B, size, rank):
     return C
 
 
-@profile
-def matrixMultiply(A_in, B_in, comm, rank, size):
+# @profile
+def matrixMultiply(A_in, B_in, comm, rank, size, n_split_B = 1):
     """
-    Multiply two matrices A and B using the naive method.
+    Multiply two matrices A and B using MPI.
+
     """
     if rank == 0:
         print("Multiplying two matrices using MPI.")
@@ -48,6 +50,8 @@ def matrixMultiply(A_in, B_in, comm, rank, size):
         if B_in.flags['C_CONTIGUOUS'] == False:
             print("Matrix B is not C contiguous. Will create a copy.")
             B_in = B_in.ascontiguousarray()
+        if n_split_B < 1:
+            raise ValueError("n_split_B must be at least 1")
         rows_A, cols_A = A_in.shape
         rows_B, cols_B = B_in.shape
     else:
@@ -62,16 +66,34 @@ def matrixMultiply(A_in, B_in, comm, rank, size):
 
     A_local_rows = np.zeros(size, dtype=int)
     A_local_rows[:] = rows_A // size
-    extra_rows = rows_A % size
-    A_local_rows[:extra_rows] += 1
-    
+    A_extra_rows = rows_A % size
+    A_local_rows[:A_extra_rows] += 1
     A_loc = np.zeros((A_local_rows[rank], cols_A))
     sendcounts = A_local_rows*cols_A
     senddispls = np.insert(np.cumsum(sendcounts), 0, 0)[:-1]
     comm.Scatterv([A_in, sendcounts, senddispls, MPI.DOUBLE], A_loc, root=0)
-    C_loc = np.zeros((A_local_rows[rank], cols_B))
-    B = comm.bcast(B_in, root=0)
-    C_loc = A_loc @ B
+    # C_loc = np.zeros((A_local_rows[rank], cols_B))
+    if n_split_B == 1:
+        if rank > 0:
+            B_in = np.empty((rows_B,cols_B), dtype=float)
+        comm.Bcast(B_in, root=0)
+        C_loc = matmult_pbcc.matrixMultiply(A_loc, B_in)
+        # C_loc = A_loc@B_in
+    else:
+        C_loc = np.zeros((A_local_rows[rank], cols_B))
+        B_local_rows = np.zeros(n_split_B, dtype=int)
+        B_local_rows[:] = rows_B // n_split_B
+        B_extra_rows = rows_B % n_split_B
+        B_local_rows[:B_extra_rows] += 1
+        B_rows_splitters = np.insert(np.cumsum(B_local_rows), 0, 0)
+        for B_spl_count in range(n_split_B):
+            if rank == 0:
+                B = B_in[B_rows_splitters[B_spl_count]:B_rows_splitters[B_spl_count+1],:]
+            else:
+                B = np.empty((B_rows_splitters[B_spl_count+1]-B_rows_splitters[B_spl_count], cols_B))
+            comm.Bcast(B, root=0)
+            matmult_pbcc.submatrixMultiply(A_loc, B, C_loc, B_rows_splitters[B_spl_count])
+    # C_loc = A_loc @ B
     C = None
     if rank == 0:
         C = np.zeros((rows_A, cols_B))
