@@ -1,0 +1,42 @@
+name: MatrixMult_MPI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.9"
+
+      - name: Set up virtual environment and upgrade pip
+        run: |
+          python -m venv venv
+          source venv/bin/activate
+          python -m pip install --upgrade pip setuptools wheel
+
+      - name: Install project (using pyproject.toml)
+        run: |
+          source venv/bin/activate
+          sudo apt-get update
+          sudo apt-get install -y build-essential gfortran libopenblas-dev openmpi-bin libopenmpi-dev
+          python -m pip install pybind11
+          g++ -O3 -Wall -shared -fPIC $(python3 -m pybind11 --includes) -static-libstdc++ src/matmul/matmult.cpp -lopenblas -o src/matmul/matmult_pbcc$(python3-config --extension-suffix)
+          python -m pip install .
+          
+
+      - name: Run tests
+        run: |
+          source venv/bin/activate
+          mpiexec --oversubscribe -n 4 python -m pytest --maxfail=1 --disable-warnings -q
+

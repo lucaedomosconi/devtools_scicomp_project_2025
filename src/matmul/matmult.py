@@ -1,5 +1,4 @@
 import numpy as np
-import numba
 from mpi4py import MPI
 from . import matmult_pbcc
 from memory_profiler import profile

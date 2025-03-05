@@ -20,5 +20,9 @@ exclude = ["scripts", "tests", "shell", "experiments"]
 [tool.setuptools.dynamic]
 dependencies = { file = ["requirements.txt"] }
 
+[tool.setuptools.package-data]
+# Include shared libraries (compiled extension modules) in the "matmul" package.
+matmul = ["*.so"]
+
 [project.optional-dependencies]
 test = ["pytest"]

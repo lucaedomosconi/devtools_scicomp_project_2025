@@ -91,12 +91,5 @@ PYBIND11_MODULE(matmult_pbcc, m) {
     m.doc() = "pybind11 sub-matrix multiplication plugin"; // optional module docstring
 
     m.def("submatrixMultiply", &submatrixMultiply,
-        "input:
-        \n\tA(m,k)
-        \n\tB(k,n)
-        \n\tC(m,n)
-        \n\tstart_row_A
-        \nComputes the product of the submatrices A[:,start_row_A:start_row_A+k] and B[:,:]")
-
-
-    }
+        "input:\n\tA(m,k)\n\tB(k,n)\n\tC(m,n)\n\tstart_row_A\nComputes the product of the submatrices A[:,start_row_A:start_row_A+k] and B[:,:]");
+}
