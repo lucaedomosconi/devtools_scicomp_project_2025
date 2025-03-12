@@ -42,9 +42,9 @@ py::array_t<real,py::array::c_style> matrixMultiply(py::array_t<real,py::array::
     real * ptrA = static_cast<real *>(bufA.ptr);
     real * ptrB = static_cast<real *>(bufB.ptr);
     real * ptrC = static_cast<real *>(bufC.ptr);
-    void *handle1 = dlopen("/usr/lib/x86_64-linux-gnu/libmkl_gnu_thread.so", RTLD_LAZY | RTLD_GLOBAL);
-    void *handle2 = dlopen("/usr/lib/x86_64-linux-gnu/libmkl_intel_lp64", RTLD_LAZY | RTLD_GLOBAL);
-    void *handle3 = dlopen("/usr/lib/x86_64-linux-gnu/libmkl_core.so", RTLD_LAZY | RTLD_GLOBAL);
+    // void *handle1 = dlopen("/usr/lib/x86_64-linux-gnu/libmkl_gnu_thread.so", RTLD_LAZY | RTLD_GLOBAL);
+    // void *handle2 = dlopen("/usr/lib/x86_64-linux-gnu/libmkl_intel_lp64", RTLD_LAZY | RTLD_GLOBAL);
+    // void *handle3 = dlopen("/usr/lib/x86_64-linux-gnu/libmkl_core.so", RTLD_LAZY | RTLD_GLOBAL);
 
 
     cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
@@ -70,25 +70,23 @@ void submatrixMultiply(py::array_t<real,py::array::c_style> A,
     real * ptrA = static_cast<real *>(bufA.ptr);
     real * ptrB = static_cast<real *>(bufB.ptr);
     real * ptrC = static_cast<real *>(bufC.ptr);
-    void * handle1 = dlopen("/usr/lib/x86_64-linux-gnu/libmkl_gnu_thread.so", RTLD_LAZY | RTLD_GLOBAL);
-    void * handle2 = dlopen("/usr/lib/x86_64-linux-gnu/libmkl_intel_lp64", RTLD_LAZY | RTLD_GLOBAL);
-    void * handle3 = dlopen("/usr/lib/x86_64-linux-gnu/libmkl_core.so", RTLD_LAZY | RTLD_GLOBAL);
+    // void * handle1 = dlopen("/usr/lib/x86_64-linux-gnu/libmkl_gnu_thread.so", RTLD_LAZY | RTLD_GLOBAL);
+    // void * handle2 = dlopen("/usr/lib/x86_64-linux-gnu/libmkl_intel_lp64", RTLD_LAZY | RTLD_GLOBAL);
+    // void * handle3 = dlopen("/usr/lib/x86_64-linux-gnu/libmkl_core.so", RTLD_LAZY | RTLD_GLOBAL);
 
 
     cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
                 n_rows_C, n_cols_C, n_rows_B,
                 1.0, ptrA+start_row_A, n_cols_A, ptrB, n_cols_B,
                 1.0, ptrC, n_cols_C);
-    }
+}
 
 
 
 PYBIND11_MODULE(matmult_pbcc, m) {
-    m.doc() = "pybind11 matrix multiplication plugin"; // optional module docstring
+    m.doc() = "pybind11 matrix multiplication plugin";
 
     m.def("matrixMultiply", &matrixMultiply, "A function that multiplies two matrices");
-
-    m.doc() = "pybind11 sub-matrix multiplication plugin"; // optional module docstring
 
     m.def("submatrixMultiply", &submatrixMultiply,
         "input:\n\tA(m,k)\n\tB(k,n)\n\tC(m,n)\n\tstart_row_A\nComputes the product of the submatrices A[:,start_row_A:start_row_A+k] and B[:,:]");
