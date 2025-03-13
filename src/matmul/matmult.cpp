@@ -30,15 +30,15 @@ using real = double;
 namespace py = pybind11;
 
 
-py::array_t<real,py::array::c_style> matrixMultiply(py::array_t<real,py::array::c_style> A,
-                                                    py::array_t<real,py::array::c_style> B) {
+void matrixMultiply(py::array_t<real,py::array::c_style> A,
+                    py::array_t<real,py::array::c_style> B,
+                    py::array_t<real,py::array::c_style> C) {
     py::buffer_info bufA = A.request();
     py::buffer_info bufB = B.request();
+    py::buffer_info bufC = C.request();
     py::ssize_t n_rows_A = bufA.shape[0];
     py::ssize_t n_cols_A = bufA.shape[1];
     py::ssize_t n_cols_B = bufB.shape[1];
-    py::array_t<real,py::array::c_style> C({n_rows_A,n_cols_B});
-    py::buffer_info bufC = C.request();
     real * ptrA = static_cast<real *>(bufA.ptr);
     real * ptrB = static_cast<real *>(bufB.ptr);
     real * ptrC = static_cast<real *>(bufC.ptr);
@@ -50,8 +50,7 @@ py::array_t<real,py::array::c_style> matrixMultiply(py::array_t<real,py::array::
     cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
                 n_rows_A, n_cols_B, n_cols_A,
                 1.0, ptrA, n_cols_A, ptrB, n_cols_B,
-                0.0, ptrC,n_cols_B);
-    return C;
+                0.0, ptrC, n_cols_B);
 }
 
 void submatrixMultiply(py::array_t<real,py::array::c_style> A,

@@ -2,6 +2,7 @@ import numpy as np
 from mpi4py import MPI
 from . import matmult_pbcc
 from memory_profiler import profile
+import os
 # import cProfile
 
 
@@ -20,8 +21,8 @@ def sub_matrixMultiply(A, B, size, rank):
                 C[i, j] += A[i, k] * B[k, j]
     return C
 
-
-@profile
+# fp=open(os.environ["logfile"],'w+')
+# @profile(stream=fp)
 def matrixMultiply(A_in : np.ndarray, B_in : np.ndarray, comm : MPI.Comm, rank : int, size : int , n_split_B = 1) -> np.ndarray:
     """
     Multiply two matrices A and B using MPI.
@@ -80,19 +81,26 @@ def matrixMultiply(A_in : np.ndarray, B_in : np.ndarray, comm : MPI.Comm, rank :
     A_local_rows[:] = rows_A // size
     A_extra_rows = rows_A % size
     A_local_rows[:A_extra_rows] += 1
-    A_loc = np.zeros((A_local_rows[rank], cols_A))
+    if rank > 0:
+        A_loc = np.empty((A_local_rows[rank], cols_A))
     sendcounts = A_local_rows*cols_A
     senddispls = np.insert(np.cumsum(sendcounts), 0, 0)[:-1]
-    comm.Scatterv([A_in, sendcounts, senddispls, MPI.DOUBLE], A_loc, root=0)
+    if rank == 0:
+        comm.Scatterv([A_in, sendcounts, senddispls, MPI.DOUBLE], MPI.IN_PLACE, root=0)
+        A_loc = A_in[:A_local_rows[rank],:]
+        C = np.zeros((rows_A, cols_B), dtype=float)
+        C_loc = C[:A_local_rows[0],:]
+    if rank > 0:
+        comm.Scatterv([A_in, sendcounts, senddispls, MPI.DOUBLE], A_loc, root=0)
+        C_loc = np.zeros((A_local_rows[rank], cols_B), dtype=float)
     # C_loc = np.zeros((A_local_rows[rank], cols_B))
     if n_split_B == 1:
         if rank > 0:
             B_in = np.empty((rows_B,cols_B), dtype=float)
         comm.Bcast(B_in, root=0)
-        C_loc = matmult_pbcc.matrixMultiply(A_loc, B_in)
+        matmult_pbcc.matrixMultiply(A_loc, B_in, C_loc)
         # C_loc = A_loc@B_in
     else:
-        C_loc = np.zeros((A_local_rows[rank], cols_B))
         B_local_rows = np.zeros(n_split_B, dtype=int)
         B_local_rows[:] = rows_B // n_split_B
         B_extra_rows = rows_B % n_split_B
@@ -100,17 +108,17 @@ def matrixMultiply(A_in : np.ndarray, B_in : np.ndarray, comm : MPI.Comm, rank :
         B_rows_splitters = np.insert(np.cumsum(B_local_rows), 0, 0)
         for B_spl_count in range(n_split_B):
             if rank == 0:
-                B = B_in[B_rows_splitters[B_spl_count]:B_rows_splitters[B_spl_count+1],:]
+                B_loc = B_in[B_rows_splitters[B_spl_count]:B_rows_splitters[B_spl_count+1],:]
             else:
-                B = np.empty((B_rows_splitters[B_spl_count+1]-B_rows_splitters[B_spl_count], cols_B))
-            comm.Bcast(B, root=0)
-            matmult_pbcc.submatrixMultiply(A_loc, B, C_loc, B_rows_splitters[B_spl_count])
+                B_loc = np.empty((B_rows_splitters[B_spl_count+1]-B_rows_splitters[B_spl_count], cols_B))
+            comm.Bcast(B_loc, root=0)
+            matmult_pbcc.submatrixMultiply(A_loc, B_loc, C_loc, B_rows_splitters[B_spl_count])
     # C_loc = A_loc @ B
     C = None
     if rank == 0:
-        C = np.zeros((rows_A, cols_B))
+        C = np.empty((rows_A, cols_B))
     recvcounts = A_local_rows * cols_B
     recvdispls = np.insert(np.cumsum(recvcounts), 0, 0)[:-1]
     comm.Gatherv(C_loc, [C, recvcounts, recvdispls, MPI.DOUBLE], root=0)
-    
+    C_loc = None
     return C

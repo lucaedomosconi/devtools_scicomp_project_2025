@@ -6,5 +6,8 @@ pytest
 tomli
 pybind11
 numpy
+matplotlib
+argparse
 mpi4py
 memory-profiler
+pyyaml
