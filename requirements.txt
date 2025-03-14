@@ -2,7 +2,6 @@ exceptiongroup
 iniconfig
 packaging
 pluggy
-pytest
 tomli
 pybind11
 numpy
