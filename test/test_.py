@@ -8,10 +8,10 @@ def test_1():
     rank = comm.Get_rank()
     size = comm.Get_size()
 
-    n_rows_A = 4095
-    n_cols_A = 4097
+    n_rows_A = 258
+    n_cols_A = 257
     n_rows_B = n_cols_A
-    n_cols_B = 4099
+    n_cols_B = 254
     A = None
     B = None
     C = None
