@@ -42,7 +42,6 @@ def matrixMultiply(A_in : np.ndarray, B_in : np.ndarray, comm : MPI.Comm, rank :
         The matrices A and B must be row major contiguous. If they are not they will be converted, and the user will be informed.
     """
     if rank == 0:
-        print("Multiplying two matrices using MPI.")
         if A_in is None or B_in is None:
             raise ValueError("Input matrices must not be None.")
         if not isinstance(A_in, np.ndarray) or not isinstance(B_in, np.ndarray):
