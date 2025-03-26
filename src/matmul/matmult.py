@@ -3,23 +3,15 @@ from mpi4py import MPI
 from . import matmult_pbcc
 from memory_profiler import profile
 import os
+import sys
+import logging
 # import cProfile
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[logging.StreamHandler(sys.stderr)]
+)
 
-
-# @numba.jit(nopython=True)
-def sub_matrixMultiply(A, B, size, rank):
-    n_rows_A, n_cols_A = A.shape
-    n_rows_B, n_cols_B = B.shape
-    if n_cols_A != n_rows_B:
-        raise ValueError("Inner dimensions of matrices don't match.")
-    n_rows_C = n_rows_A
-    n_cols_C = n_cols_B
-    C = np.zeros((n_rows_C, n_cols_C))
-    for i in range(rank, n_rows_A, size):
-        for j in range(n_cols_B):
-            for k in range(n_cols_A):
-                C[i, j] += A[i, k] * B[k, j]
-    return C
 
 # fp=open(os.environ["logfile"],'w+')
 # @profile(stream=fp)
@@ -43,9 +35,9 @@ def matrixMultiply(A_in : np.ndarray, B_in : np.ndarray, comm : MPI.Comm, rank :
     """
     if rank == 0:
         if A_in is None or B_in is None:
-            raise ValueError("Input matrices must not be None.")
+            raise TypeError("Input matrices must not be None.")
         if not isinstance(A_in, np.ndarray) or not isinstance(B_in, np.ndarray):
-            raise ValueError("Input matrices must be numpy arrays.")
+            raise TypeError("Input matrices must be numpy arrays.")
         if A_in.ndim != 2 or B_in.ndim != 2:
             raise ValueError("Input matrices must be 2D.")
         if A_in.shape[1] != B_in.shape[0]:
@@ -53,17 +45,21 @@ def matrixMultiply(A_in : np.ndarray, B_in : np.ndarray, comm : MPI.Comm, rank :
         if comm is None:
             raise ValueError("MPI communicator must not be None.")
         if not isinstance(comm, MPI.Comm):
-            raise ValueError("MPI communicator must be of type MPI.Comm.")
+            raise TypeError("MPI communicator must be of type MPI.Comm.")
+        if not isinstance(size,int) or not isinstance(rank, int) or not isinstance(n_split_B, int):
+            raise TypeError("Rank, size and n_split_B must be integers.")
+        if rank < 0 or rank >= size:
+            raise ValueError("Rank must be between 0 and size-1.")
         if size < 1:
-            raise ValueError("Number of processes must be at least 1.")
-        if A_in.flags['C_CONTIGUOUS'] == False:
-            print("Matrix A is not C contiguous. Will create a copy.")
-            A_in = A_in.ascontiguousarray()
-        if B_in.flags['C_CONTIGUOUS'] == False:
-            print("Matrix B is not C contiguous. Will create a copy.")
-            B_in = B_in.ascontiguousarray()
+            raise ValueError("size must be at least 1.")
         if n_split_B < 1:
             raise ValueError("n_split_B must be at least 1")
+        if A_in.flags['C_CONTIGUOUS'] == False:
+            logging.info("Matrix A is not C contiguous (Row-Major style). Will create a copy.")
+            A_in = np.ascontiguousarray(A_in)
+        if B_in.flags['C_CONTIGUOUS'] == False:
+            logging.info("Matrix B is not C contiguous (Row-Major style). Will create a copy.")
+            B_in = np.ascontiguousarray(B_in)
         rows_A, cols_A = A_in.shape
         rows_B, cols_B = B_in.shape
     else:
