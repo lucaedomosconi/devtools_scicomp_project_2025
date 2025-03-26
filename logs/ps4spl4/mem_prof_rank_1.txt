@@ -1,0 +1,106 @@
+Filename: /home/lucam/devtools_scicomp_project_2025/src/matmul/matmult.py
+
+Line #    Mem usage    Increment  Occurrences   Line Contents
+=============================================================
+    25     59.0 MiB     59.0 MiB           1   @profile(stream=fp)
+    26                                         def matrixMultiply(A_in : np.ndarray, B_in : np.ndarray, comm : MPI.Comm, rank : int, size : int , n_split_B = 1) -> np.ndarray:
+    27                                             """
+    28                                             Multiply two matrices A and B using MPI.
+    29                                             
+    30                                             Parameters:
+    31                                                 A (np.ndarray): a 2D NumPy array of float64. Must be passed by rank 0 processor. The other processors may pass a null object ("None").
+    32                                                 B (np.ndarray): a 2D NumPy array of float64. Must be passed by rank 0 processor. The other processors may pass a null object ("None").
+    33                                                 comm (MPI.comm): MPI communicator.
+    34                                                 rank (int): rank of current processor.
+    35                                                 size (int): number of processors.
+    36                                                 n_split_B (int): number of splits of matrix B. 
+    37                                             Returns:
+    38                                                 C (np.ndarray): a 2D NumPy array of float64. The result is returned only to rank 0 processor
+    39                                             Description:
+    40                                                 The function computes the product of two matrices. Rows of A are scattered among the different processors, which compute the corresponding rows of C.
+    41                                                 If n_split_B = 1 each processor will have his own copy of B. If n_split_B > 1, B will be split into n_split_B blocks of rows. This blocks will be passed one by one from the rank 0 processor to the others. In this way we split the computations and avoid making a copy of the whole matrix B into each processor. This will result in a smaller amount of memory required by each processor (apart from rank 0).
+    42                                                 The matrices A and B must be row major contiguous. If they are not they will be converted, and the user will be informed.
+    43                                             """
+    44     59.0 MiB      0.0 MiB           1       if rank == 0:
+    45                                                 print("Multiplying two matrices using MPI.")
+    46                                                 if A_in is None or B_in is None:
+    47                                                     raise ValueError("Input matrices must not be None.")
+    48                                                 if not isinstance(A_in, np.ndarray) or not isinstance(B_in, np.ndarray):
+    49                                                     raise ValueError("Input matrices must be numpy arrays.")
+    50                                                 if A_in.ndim != 2 or B_in.ndim != 2:
+    51                                                     raise ValueError("Input matrices must be 2D.")
+    52                                                 if A_in.shape[1] != B_in.shape[0]:
+    53                                                     raise ValueError("Inner dimensions of matrices don't match.")
+    54                                                 if comm is None:
+    55                                                     raise ValueError("MPI communicator must not be None.")
+    56                                                 if not isinstance(comm, MPI.Comm):
+    57                                                     raise ValueError("MPI communicator must be of type MPI.Comm.")
+    58                                                 if size < 1:
+    59                                                     raise ValueError("Number of processes must be at least 1.")
+    60                                                 if A_in.flags['C_CONTIGUOUS'] == False:
+    61                                                     print("Matrix A is not C contiguous. Will create a copy.")
+    62                                                     A_in = A_in.ascontiguousarray()
+    63                                                 if B_in.flags['C_CONTIGUOUS'] == False:
+    64                                                     print("Matrix B is not C contiguous. Will create a copy.")
+    65                                                     B_in = B_in.ascontiguousarray()
+    66                                                 if n_split_B < 1:
+    67                                                     raise ValueError("n_split_B must be at least 1")
+    68                                                 rows_A, cols_A = A_in.shape
+    69                                                 rows_B, cols_B = B_in.shape
+    70                                             else:
+    71     59.0 MiB      0.0 MiB           1           A_in = None
+    72     59.0 MiB      0.0 MiB           1           B_in = None
+    73     59.0 MiB      0.0 MiB           1           rows_A = cols_A = rows_B = cols_B = None
+    74                                             
+    75     59.0 MiB      0.0 MiB           1       rows_A = comm.bcast(rows_A, root=0)
+    76     59.0 MiB      0.0 MiB           1       cols_A = comm.bcast(cols_A, root=0)
+    77     59.0 MiB      0.0 MiB           1       rows_B = comm.bcast(rows_B, root=0)
+    78     59.0 MiB      0.0 MiB           1       cols_B = comm.bcast(cols_B, root=0)
+    79                                         
+    80     59.0 MiB      0.0 MiB           1       A_local_rows = np.zeros(size, dtype=int)
+    81     59.0 MiB      0.0 MiB           1       A_local_rows[:] = rows_A // size
+    82     59.0 MiB      0.0 MiB           1       A_extra_rows = rows_A % size
+    83     59.0 MiB      0.0 MiB           1       A_local_rows[:A_extra_rows] += 1
+    84     59.0 MiB      0.0 MiB           1       if rank > 0:
+    85     59.0 MiB      0.0 MiB           1           A_loc = np.empty((A_local_rows[rank], cols_A))
+    86     59.0 MiB      0.0 MiB           1       sendcounts = A_local_rows*cols_A
+    87     59.0 MiB      0.0 MiB           1       senddispls = np.insert(np.cumsum(sendcounts), 0, 0)[:-1]
+    88     59.0 MiB      0.0 MiB           1       if rank == 0:
+    89                                                 comm.Scatterv([A_in, sendcounts, senddispls, MPI.DOUBLE], MPI.IN_PLACE, root=0)
+    90                                                 A_loc = A_in[:A_local_rows[rank],:]
+    91                                                 C = np.zeros((rows_A, cols_B), dtype=float)
+    92                                                 C_loc = C[:A_local_rows[0],:]
+    93     59.0 MiB      0.0 MiB           1       if rank > 0:
+    94    138.0 MiB     79.0 MiB           1           comm.Scatterv([A_in, sendcounts, senddispls, MPI.DOUBLE], A_loc, root=0)
+    95    138.0 MiB      0.0 MiB           1           C_loc = np.zeros((A_local_rows[rank], cols_B), dtype=float)
+    96                                             # C_loc = np.zeros((A_local_rows[rank], cols_B))
+    97    138.0 MiB      0.0 MiB           1       if n_split_B == 1:
+    98                                                 if rank > 0:
+    99                                                     B_in = np.empty((rows_B,cols_B), dtype=float)
+   100                                                 comm.Bcast(B_in, root=0)
+   101                                                 matmult_pbcc.matrixMultiply(A_loc, B_in, C_loc)
+   102                                                 # C_loc = A_loc@B_in
+   103                                             else:
+   104    138.0 MiB      0.0 MiB           1           B_local_rows = np.zeros(n_split_B, dtype=int)
+   105    138.0 MiB      0.0 MiB           1           B_local_rows[:] = rows_B // n_split_B
+   106    138.0 MiB      0.0 MiB           1           B_extra_rows = rows_B % n_split_B
+   107    138.0 MiB      0.0 MiB           1           B_local_rows[:B_extra_rows] += 1
+   108    138.0 MiB      0.0 MiB           1           B_rows_splitters = np.insert(np.cumsum(B_local_rows), 0, 0)
+   109    258.8 MiB     -0.5 MiB           5           for B_spl_count in range(n_split_B):
+   110    258.8 MiB     -0.3 MiB           4               if rank == 0:
+   111                                                         B_loc = B_in[B_rows_splitters[B_spl_count]:B_rows_splitters[B_spl_count+1],:]
+   112                                                     else:
+   113    180.8 MiB   -234.2 MiB           4                   B_loc = np.empty((B_rows_splitters[B_spl_count+1]-B_rows_splitters[B_spl_count], cols_B))
+   114    258.7 MiB    311.9 MiB           4               comm.Bcast(B_loc, root=0)
+   115    258.8 MiB     42.7 MiB           4               matmult_pbcc.submatrixMultiply(A_loc, B_loc, C_loc, B_rows_splitters[B_spl_count])
+   116                                             # C_loc = A_loc @ B
+   117    258.7 MiB     -0.1 MiB           1       C = None
+   118    258.7 MiB      0.0 MiB           1       if rank == 0:
+   119                                                 C = np.empty((rows_A, cols_B))
+   120    258.7 MiB      0.0 MiB           1       recvcounts = A_local_rows * cols_B
+   121    258.7 MiB      0.0 MiB           1       recvdispls = np.insert(np.cumsum(recvcounts), 0, 0)[:-1]
+   122    258.7 MiB      0.0 MiB           1       comm.Gatherv(C_loc, [C, recvcounts, recvdispls, MPI.DOUBLE], root=0)
+   123    226.9 MiB    -31.8 MiB           1       C_loc = None
+   124    226.9 MiB      0.0 MiB           1       return C
+
+
