@@ -69,7 +69,7 @@ def matrixMultiply(A_in : np.ndarray, B_in : np.ndarray, comm : MPI.Comm, rank :
     
     rows_A = comm.bcast(rows_A, root=0)
     cols_A = comm.bcast(cols_A, root=0)
-    rows_B = comm.bcast(rows_B, root=0)
+    rows_B = cols_A
     cols_B = comm.bcast(cols_B, root=0)
 
     A_local_rows = np.zeros(size, dtype=int)
@@ -81,34 +81,37 @@ def matrixMultiply(A_in : np.ndarray, B_in : np.ndarray, comm : MPI.Comm, rank :
     sendcounts = A_local_rows*cols_A
     senddispls = np.insert(np.cumsum(sendcounts), 0, 0)[:-1]
     if rank == 0:
-        comm.Scatterv([A_in, sendcounts, senddispls, MPI.DOUBLE], MPI.IN_PLACE, root=0)
-        A_loc = A_in[:A_local_rows[rank],:]
+        req_A_in = comm.Iscatterv([A_in, sendcounts, senddispls, MPI.DOUBLE], MPI.IN_PLACE, root=0)
         C = np.zeros((rows_A, cols_B), dtype=float)
         C_loc = C[:A_local_rows[0],:]
+        req_A_in.wait()
+        A_loc = A_in[:A_local_rows[rank],:]
     if rank > 0:
-        comm.Scatterv([A_in, sendcounts, senddispls, MPI.DOUBLE], A_loc, root=0)
+        req_A_in = comm.Iscatterv([A_in, sendcounts, senddispls, MPI.DOUBLE], A_loc, root=0)
         C_loc = np.zeros((A_local_rows[rank], cols_B), dtype=float)
-    # C_loc = np.zeros((A_local_rows[rank], cols_B))
     if n_split_B == 1:
         if rank > 0:
             B_in = np.empty((rows_B,cols_B), dtype=float)
+            req_A_in.wait()
         comm.Bcast(B_in, root=0)
+            
         matmult_pbcc.matrixMultiply(A_loc, B_in, C_loc)
-        # C_loc = A_loc@B_in
     else:
         B_local_rows = np.zeros(n_split_B, dtype=int)
         B_local_rows[:] = rows_B // n_split_B
         B_extra_rows = rows_B % n_split_B
         B_local_rows[:B_extra_rows] += 1
         B_rows_splitters = np.insert(np.cumsum(B_local_rows), 0, 0)
+        first_iter = True
         for B_spl_count in range(n_split_B):
             if rank == 0:
                 B_loc = B_in[B_rows_splitters[B_spl_count]:B_rows_splitters[B_spl_count+1],:]
             else:
                 B_loc = np.empty((B_rows_splitters[B_spl_count+1]-B_rows_splitters[B_spl_count], cols_B))
+                if first_iter:
+                    req_A_in.wait()
             comm.Bcast(B_loc, root=0)
             matmult_pbcc.submatrixMultiply(A_loc, B_loc, C_loc, B_rows_splitters[B_spl_count])
-    # C_loc = A_loc @ B
     C = None
     if rank == 0:
         C = np.empty((rows_A, cols_B))

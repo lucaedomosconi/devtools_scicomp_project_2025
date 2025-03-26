@@ -2,7 +2,9 @@
 # performance profiling for square matrices
 
 export OMP_NUM_THREADS=1
-output="logs/performance.log"
+outputfolder="logs"
+mkdir -p $outputfolder
+output="${outputfolder}/performance.csv"
 touch $output
 
 echo "m_dim,ranks,nsplits,time_matmul,time_reference_@" > $output

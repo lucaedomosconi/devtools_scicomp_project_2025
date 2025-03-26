@@ -25,6 +25,7 @@ parser.add_argument("--logfolder", type=str, help="memory usage logs will be sav
 parser.add_argument("--test", action="store_true", help="compare implemented function with @ operator")
 parser.add_argument("-f","--file", type=str, help="read parameters in yaml file '<file>'")
 parser.add_argument("--onlytime", action="store_true", help="only plot time of the execution of the function")
+parser.add_argument("-o","--output", type=str, help="output file for the result of the matrix multiplication")
 
 args = parser.parse_args()
 if args.logfolder is not None:
@@ -83,3 +84,7 @@ if args.test and rank == 0:
 
 if not args.onlytime and args.test and rank == 0:
     print("Difference between the two methods:      ", np.linalg.norm(C-C1))
+
+if args.output is not None:
+    if rank == 0:
+        np.save(args.output, C)
