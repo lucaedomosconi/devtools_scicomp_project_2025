@@ -59,7 +59,7 @@ they will be converted, and the user will be informed.</p>
 <h3>Parameters:<a class="headerlink" href="#parameters" title="Link to this heading">¶</a></h3>
 <blockquote>
 <div><dl class="simple">
-<dt>A<span class="classifier">nd.array</span></dt><dd><p>A 2D NumPy array of float64. Must be passed by rank 0
+<dt>A<span class="classifier">np.ndarray</span></dt><dd><p>A 2D NumPy array of float64. Must be passed by rank 0
 processor. The other processors may pass a null object
 (“None”).</p>
 </dd>
@@ -121,13 +121,13 @@ It uses the CBLAS <cite>dgemm</cite> function for efficient matrix multiplicatio
 <h3>Parameters<a class="headerlink" href="#id1" title="Link to this heading">¶</a></h3>
 <blockquote>
 <div><dl class="simple">
-<dt>A<span class="classifier">nd.array</span></dt><dd><p>A 2D NumPy array (py::array_t) of type <cite>real</cite> in C-style row-major order.
+<dt>A<span class="classifier">np.ndarray</span></dt><dd><p>A 2D NumPy array (py::array_t) of type <cite>real</cite> in C-style row-major order.
 Represents the left-hand side matrix in the multiplication.</p>
 </dd>
-<dt>B<span class="classifier">nd.array</span></dt><dd><p>A 2D NumPy array (py::array_t) of type <cite>real</cite> in C-style row-major order.
+<dt>B<span class="classifier">np.ndarray</span></dt><dd><p>A 2D NumPy array (py::array_t) of type <cite>real</cite> in C-style row-major order.
 Represents the right-hand side matrix in the multiplication.</p>
 </dd>
-<dt>C<span class="classifier">nd.array</span></dt><dd><p>A 2D NumPy array (py::array_t) of type <cite>real</cite> in C-style row-major order.
+<dt>C<span class="classifier">np.ndarray</span></dt><dd><p>A 2D NumPy array (py::array_t) of type <cite>real</cite> in C-style row-major order.
 Represents the output matrix where the result of the multiplication is stored.</p>
 </dd>
 </dl>
@@ -175,13 +175,13 @@ It uses the CBLAS <cite>dgemm</cite> function for efficient matrix multiplicatio
 <h3>Parameters<a class="headerlink" href="#id3" title="Link to this heading">¶</a></h3>
 <blockquote>
 <div><dl class="simple">
-<dt>A<span class="classifier">nd.array</span></dt><dd><p>A 2D NumPy array (py::array_t) of type <cite>real</cite> in C-style row-major order.
+<dt>A<span class="classifier">np.ndarray</span></dt><dd><p>A 2D NumPy array (py::array_t) of type <cite>real</cite> in C-style row-major order.
 Represents the left-hand side matrix in the multiplication.</p>
 </dd>
-<dt>B<span class="classifier">nd.array</span></dt><dd><p>A 2D NumPy array (py::array_t) of type <cite>real</cite> in C-style row-major order.
+<dt>B<span class="classifier">np.ndarray</span></dt><dd><p>A 2D NumPy array (py::array_t) of type <cite>real</cite> in C-style row-major order.
 Represents the right-hand side matrix in the multiplication.</p>
 </dd>
-<dt>C<span class="classifier">nd.array</span></dt><dd><p>A 2D NumPy array (py::array_t) of type <cite>real</cite> in C-style row-major order.
+<dt>C<span class="classifier">np.ndarray</span></dt><dd><p>A 2D NumPy array (py::array_t) of type <cite>real</cite> in C-style row-major order.
 Represents the output matrix where the result of the multiplication is added.</p>
 </dd>
 <dt>start_row_A<span class="classifier">int</span></dt><dd><p>The starting row index in matrix A from which the submatrix is taken.</p>
