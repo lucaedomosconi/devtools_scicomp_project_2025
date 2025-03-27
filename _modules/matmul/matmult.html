@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>matmul.matmult &#8212; Matrix Multiplication with MPI 1.0.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=27fed22d" />
+    <script src="../../_static/documentation_options.js?v=8d563738"></script>
+    <script src="../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for matmul.matmult</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">mpi4py</span><span class="w"> </span><span class="kn">import</span> <span class="n">MPI</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.</span><span class="w"> </span><span class="kn">import</span> <span class="n">matmult_pbcc</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">memory_profiler</span><span class="w"> </span><span class="kn">import</span> <span class="n">profile</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="c1"># import cProfile</span>
+<span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span>
+    <span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">,</span>
+    <span class="nb">format</span><span class="o">=</span><span class="s1">&#39;</span><span class="si">%(asctime)s</span><span class="s1"> - </span><span class="si">%(levelname)s</span><span class="s1"> - </span><span class="si">%(message)s</span><span class="s1">&#39;</span><span class="p">,</span>
+    <span class="n">handlers</span><span class="o">=</span><span class="p">[</span><span class="n">logging</span><span class="o">.</span><span class="n">StreamHandler</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">)]</span>
+<span class="p">)</span>
+
+
+<span class="c1"># fp=open(os.environ[&quot;logfile&quot;],&#39;w+&#39;)</span>
+<span class="c1"># @profile(stream=fp)</span>
+<div class="viewcode-block" id="matrixMultiply">
+<a class="viewcode-back" href="../../matmul.html#matmul.matmult.matrixMultiply">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">matrixMultiply</span><span class="p">(</span><span class="n">A_in</span> <span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+                   <span class="n">B_in</span> <span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+                   <span class="n">comm</span> <span class="p">:</span> <span class="n">MPI</span><span class="o">.</span><span class="n">Comm</span><span class="p">,</span>
+                   <span class="n">rank</span> <span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+                   <span class="n">size</span> <span class="p">:</span> <span class="nb">int</span> <span class="p">,</span>
+                   <span class="n">n_split_B</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Multiply two matrices A and B using MPI.</span>
+<span class="sd">    The function computes the product of two matrices A and B. Rows</span>
+<span class="sd">    of A are scattered among the different processors, which compute</span>
+<span class="sd">    the corresponding rows of C.</span>
+<span class="sd">    </span>
+<span class="sd">    If n_split_B = 1 each processor will have his own copy of B. If</span>
+<span class="sd">    n_split_B &gt; 1, B will be split into n_split_B blocks of rows.</span>
+<span class="sd">    This blocks will be passed one by one from the rank 0 processor</span>
+<span class="sd">    to the others. In this way we split the computations and avoid</span>
+<span class="sd">    making a copy of the whole matrix B into each processor. This will</span>
+<span class="sd">    result in a smaller amount of memory required by each processor</span>
+<span class="sd">    (apart from rank 0).</span>
+
+<span class="sd">    The matrices A and B must be row major contiguous. If they are not</span>
+<span class="sd">    they will be converted, and the user will be informed.</span>
+
+<span class="sd">    Parameters:</span>
+<span class="sd">    -----------</span>
+<span class="sd">        A : nd.array</span>
+<span class="sd">            A 2D NumPy array of float64. Must be passed by rank 0</span>
+<span class="sd">            processor. The other processors may pass a null object</span>
+<span class="sd">            (&quot;None&quot;).</span>
+<span class="sd">        B : np.ndarray</span>
+<span class="sd">            A 2D NumPy array of float64. Must be passed by rank 0</span>
+<span class="sd">            processor. The other processors may pass a null object</span>
+<span class="sd">            (&quot;None&quot;).</span>
+<span class="sd">        comm : MPI.comm</span>
+<span class="sd">            MPI communicator.</span>
+<span class="sd">        rank : int</span>
+<span class="sd">            Rank id of current processor.</span>
+<span class="sd">        size : int</span>
+<span class="sd">            Number of processors.</span>
+<span class="sd">        n_split_B : int, optional</span>
+<span class="sd">            Number of submatrices B is divided into.</span>
+<span class="sd">            Default is 1.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">    --------</span>
+<span class="sd">        C : np.ndarray</span>
+<span class="sd">            A 2D NumPy array of float64. The result is returned only</span>
+<span class="sd">            to rank 0 processor. The other processors will revieve a</span>
+<span class="sd">            null object (&quot;None&quot;).</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">    -------</span>
+<span class="sd">        TypeError</span>
+<span class="sd">            If A or B are not NumPy arrays, if comm is not an MPI</span>
+<span class="sd">            communicator, if rank, size or n_split_B are not integers.</span>
+<span class="sd">        ValueError</span>
+<span class="sd">            If A or B are not 2D, if inner dimensions of A and B do</span>
+<span class="sd">            not match, if rank is not between 0 and size-1, if size is</span>
+<span class="sd">            less than 1, if n_split_B is less than 1.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">rank</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">A_in</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">B_in</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;Input matrices must not be None.&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">A_in</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">B_in</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;Input matrices must be numpy arrays.&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">A_in</span><span class="o">.</span><span class="n">ndim</span> <span class="o">!=</span> <span class="mi">2</span> <span class="ow">or</span> <span class="n">B_in</span><span class="o">.</span><span class="n">ndim</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Input matrices must be 2D.&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">A_in</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">!=</span> <span class="n">B_in</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Inner dimensions of matrices don&#39;t match.&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">comm</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;MPI communicator must not be None.&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">comm</span><span class="p">,</span> <span class="n">MPI</span><span class="o">.</span><span class="n">Comm</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;MPI communicator must be of type MPI.Comm.&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">size</span><span class="p">,</span><span class="nb">int</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">rank</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">n_split_B</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;Rank, size and n_split_B must be integers.&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">rank</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">rank</span> <span class="o">&gt;=</span> <span class="n">size</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Rank must be between 0 and size-1.&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">size</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;size must be at least 1.&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">n_split_B</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;n_split_B must be at least 1&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">A_in</span><span class="o">.</span><span class="n">flags</span><span class="p">[</span><span class="s1">&#39;C_CONTIGUOUS&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="kc">False</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Matrix A is not C contiguous (Row-Major style). Will create a copy.&quot;</span><span class="p">)</span>
+            <span class="n">A_in</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ascontiguousarray</span><span class="p">(</span><span class="n">A_in</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">B_in</span><span class="o">.</span><span class="n">flags</span><span class="p">[</span><span class="s1">&#39;C_CONTIGUOUS&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="kc">False</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Matrix B is not C contiguous (Row-Major style). Will create a copy.&quot;</span><span class="p">)</span>
+            <span class="n">B_in</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ascontiguousarray</span><span class="p">(</span><span class="n">B_in</span><span class="p">)</span>
+        <span class="n">rows_A</span><span class="p">,</span> <span class="n">cols_A</span> <span class="o">=</span> <span class="n">A_in</span><span class="o">.</span><span class="n">shape</span>
+        <span class="n">rows_B</span><span class="p">,</span> <span class="n">cols_B</span> <span class="o">=</span> <span class="n">B_in</span><span class="o">.</span><span class="n">shape</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">A_in</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">B_in</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">rows_A</span> <span class="o">=</span> <span class="n">cols_A</span> <span class="o">=</span> <span class="n">rows_B</span> <span class="o">=</span> <span class="n">cols_B</span> <span class="o">=</span> <span class="kc">None</span>
+    
+    <span class="n">rows_A</span> <span class="o">=</span> <span class="n">comm</span><span class="o">.</span><span class="n">bcast</span><span class="p">(</span><span class="n">rows_A</span><span class="p">,</span> <span class="n">root</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">cols_A</span> <span class="o">=</span> <span class="n">comm</span><span class="o">.</span><span class="n">bcast</span><span class="p">(</span><span class="n">cols_A</span><span class="p">,</span> <span class="n">root</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">rows_B</span> <span class="o">=</span> <span class="n">cols_A</span>
+    <span class="n">cols_B</span> <span class="o">=</span> <span class="n">comm</span><span class="o">.</span><span class="n">bcast</span><span class="p">(</span><span class="n">cols_B</span><span class="p">,</span> <span class="n">root</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+    <span class="n">A_local_rows</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">size</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+    <span class="n">A_local_rows</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">rows_A</span> <span class="o">//</span> <span class="n">size</span>
+    <span class="n">A_extra_rows</span> <span class="o">=</span> <span class="n">rows_A</span> <span class="o">%</span> <span class="n">size</span>
+    <span class="n">A_local_rows</span><span class="p">[:</span><span class="n">A_extra_rows</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+    <span class="k">if</span> <span class="n">rank</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">A_loc</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="n">A_local_rows</span><span class="p">[</span><span class="n">rank</span><span class="p">],</span> <span class="n">cols_A</span><span class="p">))</span>
+    <span class="n">sendcounts</span> <span class="o">=</span> <span class="n">A_local_rows</span><span class="o">*</span><span class="n">cols_A</span>
+    <span class="n">senddispls</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">sendcounts</span><span class="p">),</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">rank</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">req_A_in</span> <span class="o">=</span> <span class="n">comm</span><span class="o">.</span><span class="n">Iscatterv</span><span class="p">([</span><span class="n">A_in</span><span class="p">,</span> <span class="n">sendcounts</span><span class="p">,</span> <span class="n">senddispls</span><span class="p">,</span> <span class="n">MPI</span><span class="o">.</span><span class="n">DOUBLE</span><span class="p">],</span> <span class="n">MPI</span><span class="o">.</span><span class="n">IN_PLACE</span><span class="p">,</span> <span class="n">root</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">C</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">rows_A</span><span class="p">,</span> <span class="n">cols_B</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+        <span class="n">C_loc</span> <span class="o">=</span> <span class="n">C</span><span class="p">[:</span><span class="n">A_local_rows</span><span class="p">[</span><span class="mi">0</span><span class="p">],:]</span>
+        <span class="n">req_A_in</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+        <span class="n">A_loc</span> <span class="o">=</span> <span class="n">A_in</span><span class="p">[:</span><span class="n">A_local_rows</span><span class="p">[</span><span class="n">rank</span><span class="p">],:]</span>
+    <span class="k">if</span> <span class="n">rank</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">req_A_in</span> <span class="o">=</span> <span class="n">comm</span><span class="o">.</span><span class="n">Iscatterv</span><span class="p">([</span><span class="n">A_in</span><span class="p">,</span> <span class="n">sendcounts</span><span class="p">,</span> <span class="n">senddispls</span><span class="p">,</span> <span class="n">MPI</span><span class="o">.</span><span class="n">DOUBLE</span><span class="p">],</span> <span class="n">A_loc</span><span class="p">,</span> <span class="n">root</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">C_loc</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">A_local_rows</span><span class="p">[</span><span class="n">rank</span><span class="p">],</span> <span class="n">cols_B</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">n_split_B</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">rank</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">B_in</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="n">rows_B</span><span class="p">,</span><span class="n">cols_B</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+            <span class="n">req_A_in</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+        <span class="n">comm</span><span class="o">.</span><span class="n">Bcast</span><span class="p">(</span><span class="n">B_in</span><span class="p">,</span> <span class="n">root</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+            
+        <span class="n">matmult_pbcc</span><span class="o">.</span><span class="n">matrixMultiply</span><span class="p">(</span><span class="n">A_loc</span><span class="p">,</span> <span class="n">B_in</span><span class="p">,</span> <span class="n">C_loc</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">B_local_rows</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n_split_B</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+        <span class="n">B_local_rows</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">rows_B</span> <span class="o">//</span> <span class="n">n_split_B</span>
+        <span class="n">B_extra_rows</span> <span class="o">=</span> <span class="n">rows_B</span> <span class="o">%</span> <span class="n">n_split_B</span>
+        <span class="n">B_local_rows</span><span class="p">[:</span><span class="n">B_extra_rows</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="n">B_rows_splitters</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">B_local_rows</span><span class="p">),</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">first_iter</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">for</span> <span class="n">B_spl_count</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_split_B</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">rank</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">B_loc</span> <span class="o">=</span> <span class="n">B_in</span><span class="p">[</span><span class="n">B_rows_splitters</span><span class="p">[</span><span class="n">B_spl_count</span><span class="p">]:</span><span class="n">B_rows_splitters</span><span class="p">[</span><span class="n">B_spl_count</span><span class="o">+</span><span class="mi">1</span><span class="p">],:]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">B_loc</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="n">B_rows_splitters</span><span class="p">[</span><span class="n">B_spl_count</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">B_rows_splitters</span><span class="p">[</span><span class="n">B_spl_count</span><span class="p">],</span> <span class="n">cols_B</span><span class="p">))</span>
+                <span class="k">if</span> <span class="n">first_iter</span><span class="p">:</span>
+                    <span class="n">req_A_in</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+            <span class="n">comm</span><span class="o">.</span><span class="n">Bcast</span><span class="p">(</span><span class="n">B_loc</span><span class="p">,</span> <span class="n">root</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+            <span class="n">matmult_pbcc</span><span class="o">.</span><span class="n">submatrixMultiply</span><span class="p">(</span><span class="n">A_loc</span><span class="p">,</span> <span class="n">B_loc</span><span class="p">,</span> <span class="n">C_loc</span><span class="p">,</span> <span class="n">B_rows_splitters</span><span class="p">[</span><span class="n">B_spl_count</span><span class="p">])</span>
+    <span class="n">C</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="n">rank</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">C</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="n">rows_A</span><span class="p">,</span> <span class="n">cols_B</span><span class="p">))</span>
+    <span class="n">recvcounts</span> <span class="o">=</span> <span class="n">A_local_rows</span> <span class="o">*</span> <span class="n">cols_B</span>
+    <span class="n">recvdispls</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">recvcounts</span><span class="p">),</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">comm</span><span class="o">.</span><span class="n">Gatherv</span><span class="p">(</span><span class="n">C_loc</span><span class="p">,</span> <span class="p">[</span><span class="n">C</span><span class="p">,</span> <span class="n">recvcounts</span><span class="p">,</span> <span class="n">recvdispls</span><span class="p">,</span> <span class="n">MPI</span><span class="o">.</span><span class="n">DOUBLE</span><span class="p">],</span> <span class="n">root</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">C_loc</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">return</span> <span class="n">C</span></div>
+
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">Matrix Multiplication with MPI</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../modules.html">src</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2025, Luca Mosconi.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.2.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

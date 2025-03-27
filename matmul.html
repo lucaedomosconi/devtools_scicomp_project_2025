@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>matmul package &#8212; Matrix Multiplication with MPI 1.0.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
+    <script src="_static/documentation_options.js?v=8d563738"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="src" href="modules.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="matmul-package">
+<h1>matmul package<a class="headerlink" href="#matmul-package" title="Link to this heading">¶</a></h1>
+<section id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading">¶</a></h2>
+</section>
+<section id="module-matmul.matmult">
+<span id="matmul-matmult-module"></span><h2>matmul.matmult module<a class="headerlink" href="#module-matmul.matmult" title="Link to this heading">¶</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="matmul.matmult.matrixMultiply">
+<span class="sig-prename descclassname"><span class="pre">matmul.matmult.</span></span><span class="sig-name descname"><span class="pre">matrixMultiply</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">A_in</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">B_in</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">comm</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Comm</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rank</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_split_B</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span></span></span><a class="reference internal" href="_modules/matmul/matmult.html#matrixMultiply"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#matmul.matmult.matrixMultiply" title="Link to this definition">¶</a></dt>
+<dd><p>Multiply two matrices A and B using MPI.
+The function computes the product of two matrices A and B. Rows
+of A are scattered among the different processors, which compute
+the corresponding rows of C.</p>
+<p>If n_split_B = 1 each processor will have his own copy of B. If
+n_split_B &gt; 1, B will be split into n_split_B blocks of rows.
+This blocks will be passed one by one from the rank 0 processor
+to the others. In this way we split the computations and avoid
+making a copy of the whole matrix B into each processor. This will
+result in a smaller amount of memory required by each processor
+(apart from rank 0).</p>
+<p>The matrices A and B must be row major contiguous. If they are not
+they will be converted, and the user will be informed.</p>
+<section id="parameters">
+<h3>Parameters:<a class="headerlink" href="#parameters" title="Link to this heading">¶</a></h3>
+<blockquote>
+<div><dl class="simple">
+<dt>A<span class="classifier">nd.array</span></dt><dd><p>A 2D NumPy array of float64. Must be passed by rank 0
+processor. The other processors may pass a null object
+(“None”).</p>
+</dd>
+<dt>B<span class="classifier">np.ndarray</span></dt><dd><p>A 2D NumPy array of float64. Must be passed by rank 0
+processor. The other processors may pass a null object
+(“None”).</p>
+</dd>
+<dt>comm<span class="classifier">MPI.comm</span></dt><dd><p>MPI communicator.</p>
+</dd>
+<dt>rank<span class="classifier">int</span></dt><dd><p>Rank id of current processor.</p>
+</dd>
+<dt>size<span class="classifier">int</span></dt><dd><p>Number of processors.</p>
+</dd>
+<dt>n_split_B<span class="classifier">int, optional</span></dt><dd><p>Number of submatrices B is divided into.
+Default is 1.</p>
+</dd>
+</dl>
+</div></blockquote>
+</section>
+<section id="returns">
+<h3>Returns:<a class="headerlink" href="#returns" title="Link to this heading">¶</a></h3>
+<blockquote>
+<div><dl class="simple">
+<dt>C<span class="classifier">np.ndarray</span></dt><dd><p>A 2D NumPy array of float64. The result is returned only
+to rank 0 processor. The other processors will revieve a
+null object (“None”).</p>
+</dd>
+</dl>
+</div></blockquote>
+</section>
+<section id="raises">
+<h3>Raises:<a class="headerlink" href="#raises" title="Link to this heading">¶</a></h3>
+<blockquote>
+<div><dl class="simple">
+<dt>TypeError</dt><dd><p>If A or B are not NumPy arrays, if comm is not an MPI
+communicator, if rank, size or n_split_B are not integers.</p>
+</dd>
+<dt>ValueError</dt><dd><p>If A or B are not 2D, if inner dimensions of A and B do
+not match, if rank is not between 0 and size-1, if size is
+less than 1, if n_split_B is less than 1.</p>
+</dd>
+</dl>
+</div></blockquote>
+</section>
+</dd></dl>
+
+</section>
+<section id="module-matmul.matmult_pbcc">
+<span id="matmul-matmult-pbcc-module"></span><h2>matmul.matmult_pbcc module<a class="headerlink" href="#module-matmul.matmult_pbcc" title="Link to this heading">¶</a></h2>
+<p>Compiled matrix multiplication plugin</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="matmul.matmult_pbcc.matrixMultiply">
+<span class="sig-prename descclassname"><span class="pre">matmul.matmult_pbcc.</span></span><span class="sig-name descname"><span class="pre">matrixMultiply</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arg0</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">numpy.ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">numpy.float64</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">arg1</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">numpy.ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">numpy.float64</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">arg2</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">numpy.ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">numpy.float64</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#matmul.matmult_pbcc.matrixMultiply" title="Link to this definition">¶</a></dt>
+<dd><p>Perform matrix multiplication using CBLAS (dgemm).
+This function multiplies two 2D NumPy arrays (A and B) and stores
+the result in a third array (C).
+It uses the CBLAS <cite>dgemm</cite> function for efficient matrix multiplication.</p>
+<section id="id1">
+<h3>Parameters<a class="headerlink" href="#id1" title="Link to this heading">¶</a></h3>
+<blockquote>
+<div><dl class="simple">
+<dt>A<span class="classifier">nd.array</span></dt><dd><p>A 2D NumPy array (py::array_t) of type <cite>real</cite> in C-style row-major order.
+Represents the left-hand side matrix in the multiplication.</p>
+</dd>
+<dt>B<span class="classifier">nd.array</span></dt><dd><p>A 2D NumPy array (py::array_t) of type <cite>real</cite> in C-style row-major order.
+Represents the right-hand side matrix in the multiplication.</p>
+</dd>
+<dt>C<span class="classifier">nd.array</span></dt><dd><p>A 2D NumPy array (py::array_t) of type <cite>real</cite> in C-style row-major order.
+Represents the output matrix where the result of the multiplication is stored.</p>
+</dd>
+</dl>
+</div></blockquote>
+</section>
+<section id="id2">
+<h3>Returns<a class="headerlink" href="#id2" title="Link to this heading">¶</a></h3>
+<blockquote>
+<div><p>None</p>
+</div></blockquote>
+</section>
+<section id="notes">
+<h3>Notes<a class="headerlink" href="#notes" title="Link to this heading">¶</a></h3>
+<blockquote>
+<div><dl class="simple">
+<dt>The dimensions of the matrices must satisfy the following conditions:</dt><dd><ul class="simple">
+<li><p>The number of columns in A must match the number of rows in B.</p></li>
+<li><p>The shape of C must match the resulting matrix dimensions (rows of
+A x columns of B).</p></li>
+</ul>
+</dd>
+</dl>
+</div></blockquote>
+</section>
+<section id="warnings">
+<h3>Warnings<a class="headerlink" href="#warnings" title="Link to this heading">¶</a></h3>
+<blockquote>
+<div><ul class="simple">
+<li><p>This function assumes that the input arrays are properly allocated and have
+valid shapes.</p></li>
+<li><p>No checks are performed to validate the input dimensions.</p></li>
+</ul>
+</div></blockquote>
+</section>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="matmul.matmult_pbcc.submatrixMultiply">
+<span class="sig-prename descclassname"><span class="pre">matmul.matmult_pbcc.</span></span><span class="sig-name descname"><span class="pre">submatrixMultiply</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arg0</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">numpy.ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">numpy.float64</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">arg1</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">numpy.ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">numpy.float64</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">arg2</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">numpy.ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">numpy.float64</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">arg3</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#matmul.matmult_pbcc.submatrixMultiply" title="Link to this definition">¶</a></dt>
+<dd><p>Perform submatrix multiplication using CBLAS (dgemm).
+This function multiplies a submatrix of A (starting from a specified row)
+with matrix B and adds the result to matrix C.
+It uses the CBLAS <cite>dgemm</cite> function for efficient matrix multiplication.</p>
+<section id="id3">
+<h3>Parameters<a class="headerlink" href="#id3" title="Link to this heading">¶</a></h3>
+<blockquote>
+<div><dl class="simple">
+<dt>A<span class="classifier">nd.array</span></dt><dd><p>A 2D NumPy array (py::array_t) of type <cite>real</cite> in C-style row-major order.
+Represents the left-hand side matrix in the multiplication.</p>
+</dd>
+<dt>B<span class="classifier">nd.array</span></dt><dd><p>A 2D NumPy array (py::array_t) of type <cite>real</cite> in C-style row-major order.
+Represents the right-hand side matrix in the multiplication.</p>
+</dd>
+<dt>C<span class="classifier">nd.array</span></dt><dd><p>A 2D NumPy array (py::array_t) of type <cite>real</cite> in C-style row-major order.
+Represents the output matrix where the result of the multiplication is added.</p>
+</dd>
+<dt>start_row_A<span class="classifier">int</span></dt><dd><p>The starting row index in matrix A from which the submatrix is taken.</p>
+</dd>
+</dl>
+</div></blockquote>
+</section>
+<section id="id4">
+<h3>Returns<a class="headerlink" href="#id4" title="Link to this heading">¶</a></h3>
+<blockquote>
+<div><p>None</p>
+</div></blockquote>
+</section>
+<section id="id5">
+<h3>Notes<a class="headerlink" href="#id5" title="Link to this heading">¶</a></h3>
+<blockquote>
+<div><dl class="simple">
+<dt>The dimensions of the matrices must satisfy the following conditions:</dt><dd><ul class="simple">
+<li><p>The number of columns in A must match the number of rows in B.</p></li>
+<li><p>The shape of C must match the resulting matrix dimensions (rows of
+the submatrix of A x columns of B).</p></li>
+</ul>
+</dd>
+</dl>
+</div></blockquote>
+</section>
+<section id="id6">
+<h3>Warnings<a class="headerlink" href="#id6" title="Link to this heading">¶</a></h3>
+<blockquote>
+<div><ul class="simple">
+<li><p>This function assumes that the input arrays are properly allocated and have
+valid shapes.</p></li>
+<li><p>No checks are performed to validate the input dimensions.</p></li>
+</ul>
+</div></blockquote>
+</section>
+</dd></dl>
+
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">Matrix Multiplication with MPI</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="modules.html">src</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">matmul package</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+  <li><a href="modules.html">src</a><ul>
+      <li>Previous: <a href="modules.html" title="previous chapter">src</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2025, Luca Mosconi.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.2.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="_sources/matmul.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
