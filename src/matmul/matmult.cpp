@@ -83,10 +83,70 @@ void submatrixMultiply(py::array_t<real,py::array::c_style> A,
 
 
 PYBIND11_MODULE(matmult_pbcc, m) {
-    m.doc() = "pybind11 matrix multiplication plugin";
+    m.doc() = "Compiled matrix multiplication plugin\n";
 
-    m.def("matrixMultiply", &matrixMultiply, "A function that multiplies two matrices");
+    m.def("matrixMultiply", &matrixMultiply, 
+    "Perform matrix multiplication using CBLAS (dgemm).\n"
+    "This function multiplies two 2D NumPy arrays (A and B) and stores\n"
+    "the result in a third array (C).\n"
+    "It uses the CBLAS `dgemm` function for efficient matrix multiplication.\n\n"
+    "Parameters\n"
+    "----------\n"
+    "    A : nd.array\n"
+    "        A 2D NumPy array (py::array_t) of type `real` in C-style row-major order.\n"
+    "        Represents the left-hand side matrix in the multiplication.\n"
+    "    B : nd.array\n"
+    "        A 2D NumPy array (py::array_t) of type `real` in C-style row-major order.\n"
+    "        Represents the right-hand side matrix in the multiplication.\n"
+    "    C : nd.array\n"
+    "        A 2D NumPy array (py::array_t) of type `real` in C-style row-major order.\n"
+    "        Represents the output matrix where the result of the multiplication is stored.\n\n"
+    "Returns\n"
+    "-------\n"
+    "    None\n\n"
+    "Notes\n"
+    "-----\n"
+    "    The dimensions of the matrices must satisfy the following conditions:\n"
+    "        - The number of columns in A must match the number of rows in B.\n"
+    "        - The shape of C must match the resulting matrix dimensions (rows of\n"
+    "          A x columns of B).\n\n"
+    "Warnings\n"
+    "--------\n"
+    "    - This function assumes that the input arrays are properly allocated and have\n"
+    "      valid shapes.\n"
+    "    - No checks are performed to validate the input dimensions.\n\n");
+
 
     m.def("submatrixMultiply", &submatrixMultiply,
-        "input:\n\tA(m,k)\n\tB(k,n)\n\tC(m,n)\n\tstart_row_A\nComputes the product of the submatrices A[:,start_row_A:start_row_A+k] and B[:,:]");
+    "Perform submatrix multiplication using CBLAS (dgemm).\n"
+    "This function multiplies a submatrix of A (starting from a specified row)\n"
+    "with matrix B and adds the result to matrix C.\n"
+    "It uses the CBLAS `dgemm` function for efficient matrix multiplication.\n\n"
+    "Parameters\n"
+    "----------\n"
+    "    A : nd.array\n"
+    "        A 2D NumPy array (py::array_t) of type `real` in C-style row-major order.\n"
+    "        Represents the left-hand side matrix in the multiplication.\n"
+    "    B : nd.array\n"
+    "        A 2D NumPy array (py::array_t) of type `real` in C-style row-major order.\n"
+    "        Represents the right-hand side matrix in the multiplication.\n"
+    "    C : nd.array\n"
+    "        A 2D NumPy array (py::array_t) of type `real` in C-style row-major order.\n"
+    "        Represents the output matrix where the result of the multiplication is added.\n"
+    "    start_row_A : int\n"
+    "        The starting row index in matrix A from which the submatrix is taken.\n\n"
+    "Returns\n"
+    "-------\n"
+    "    None\n\n"
+    "Notes\n"
+    "-----\n"
+    "    The dimensions of the matrices must satisfy the following conditions:\n"
+    "        - The number of columns in A must match the number of rows in B.\n"
+    "        - The shape of C must match the resulting matrix dimensions (rows of\n"
+    "          the submatrix of A x columns of B).\n\n"
+    "Warnings\n"
+    "--------\n"
+    "    - This function assumes that the input arrays are properly allocated and have\n"
+    "      valid shapes.\n"
+    "    - No checks are performed to validate the input dimensions.\n\n");
 }

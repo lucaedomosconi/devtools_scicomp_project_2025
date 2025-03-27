@@ -7,7 +7,7 @@ on:
     branches: [ main ]
 
 jobs:
-  build-test:
+  build-test-deploy:
     runs-on: ubuntu-latest
 
     steps:
@@ -36,10 +36,22 @@ jobs:
           g++ -O3 -Wall -shared -fPIC $(python3 -m pybind11 --includes) -static-libstdc++ src/matmul/matmult.cpp -lopenblas -o src/matmul/matmult_pbcc$(python3-config --extension-suffix)
           python -m pip install .
           
-
       - name: Run tests
         run: |
           source venv/bin/activate
           python -m pip install pytest
           mpiexec --oversubscribe -n 4 python -m pytest --maxfail=1 --disable-warnings -q
+      
+      - name: Build documentation
+        run: |
+          source venv/bin/activate
+          python -m pip install sphinx
+          cd docs
+          make html
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: docs/_build/html
 

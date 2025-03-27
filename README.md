@@ -7,6 +7,7 @@ Course: Mathematical Analysis, Modelling and Applications
 # Matrix Multiplication with MPI
 The project implements a function to multiply two real matrices $A(m,k)$ and $B(k,n)$ to obtain $C(m,n)$ using MPI, balancing memory usage and performance according to user needs.
 
+Refer to the [Documentation](https://lucaedomosconi.github.io/devtools_scicomp_project_2025/) for details on the methods available in the package.
 
 ## Parallelization strategy
 - **Distribution of matrix A**:

@@ -15,23 +15,67 @@ logging.basicConfig(
 
 # fp=open(os.environ["logfile"],'w+')
 # @profile(stream=fp)
-def matrixMultiply(A_in : np.ndarray, B_in : np.ndarray, comm : MPI.Comm, rank : int, size : int , n_split_B = 1) -> np.ndarray:
+def matrixMultiply(A_in : np.ndarray,
+                   B_in : np.ndarray,
+                   comm : MPI.Comm,
+                   rank : int,
+                   size : int ,
+                   n_split_B = 1) -> np.ndarray:
+    
     """
     Multiply two matrices A and B using MPI.
+    The function computes the product of two matrices A and B. Rows
+    of A are scattered among the different processors, which compute
+    the corresponding rows of C.
     
+    If n_split_B = 1 each processor will have his own copy of B. If
+    n_split_B > 1, B will be split into n_split_B blocks of rows.
+    This blocks will be passed one by one from the rank 0 processor
+    to the others. In this way we split the computations and avoid
+    making a copy of the whole matrix B into each processor. This will
+    result in a smaller amount of memory required by each processor
+    (apart from rank 0).
+
+    The matrices A and B must be row major contiguous. If they are not
+    they will be converted, and the user will be informed.
+
     Parameters:
-        A (np.ndarray): a 2D NumPy array of float64. Must be passed by rank 0 processor. The other processors may pass a null object ("None").
-        B (np.ndarray): a 2D NumPy array of float64. Must be passed by rank 0 processor. The other processors may pass a null object ("None").
-        comm (MPI.comm): MPI communicator.
-        rank (int): rank of current processor.
-        size (int): number of processors.
-        n_split_B (int): number of splits of matrix B. 
+    -----------
+        A : nd.array
+            A 2D NumPy array of float64. Must be passed by rank 0
+            processor. The other processors may pass a null object
+            ("None").
+        B : np.ndarray
+            A 2D NumPy array of float64. Must be passed by rank 0
+            processor. The other processors may pass a null object
+            ("None").
+        comm : MPI.comm
+            MPI communicator.
+        rank : int
+            Rank id of current processor.
+        size : int
+            Number of processors.
+        n_split_B : int, optional
+            Number of submatrices B is divided into.
+            Default is 1.
+
     Returns:
-        C (np.ndarray): a 2D NumPy array of float64. The result is returned only to rank 0 processor
-    Description:
-        The function computes the product of two matrices. Rows of A are scattered among the different processors, which compute the corresponding rows of C.
-        If n_split_B = 1 each processor will have his own copy of B. If n_split_B > 1, B will be split into n_split_B blocks of rows. This blocks will be passed one by one from the rank 0 processor to the others. In this way we split the computations and avoid making a copy of the whole matrix B into each processor. This will result in a smaller amount of memory required by each processor (apart from rank 0).
-        The matrices A and B must be row major contiguous. If they are not they will be converted, and the user will be informed.
+    --------
+        C : np.ndarray
+            A 2D NumPy array of float64. The result is returned only
+            to rank 0 processor. The other processors will revieve a
+            null object ("None").
+
+    Raises:
+    -------
+        TypeError
+            If A or B are not NumPy arrays, if comm is not an MPI
+            communicator, if rank, size or n_split_B are not integers.
+        ValueError
+            If A or B are not 2D, if inner dimensions of A and B do
+            not match, if rank is not between 0 and size-1, if size is
+            less than 1, if n_split_B is less than 1.
+
     """
     if rank == 0:
         if A_in is None or B_in is None:

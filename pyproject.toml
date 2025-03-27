@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "MatrixMult"
-version = "0.0.1"
+version = "1.0.0"
 description = "multiply two matrices in parallel with MPI"
 readme = "README.md"
 requires-python = ">=3.9"
