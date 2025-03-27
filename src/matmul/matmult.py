@@ -41,7 +41,7 @@ def matrixMultiply(A_in : np.ndarray,
 
     Parameters:
     -----------
-        A : nd.array
+        A : np.ndarray
             A 2D NumPy array of float64. Must be passed by rank 0
             processor. The other processors may pass a null object
             ("None").
